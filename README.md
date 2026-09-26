@@ -12,9 +12,9 @@ Write, preview, and ship interactive narrative — as a Godot plugin or as a sta
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-informational)](#-two-ways-to-run-it)
 
 <!-- Replace with a real screenshot of the editor with a file open -->
-[![Inkodot Editor screenshot]](screenshots/screenshot1.png)
-[![Inkodot Editor screenshot]](screenshots/screenshot2.png)
-[![Inkodot Editor screenshot]](screenshots/screenshot3.png)
+[![Inkodot Editor screenshot](screenshots/screenshot1.png)]
+[![Inkodot Editor screenshot](screenshots/screenshot2.png)]
+[![Inkodot Editor screenshot](screenshots/screenshot3.png)]
 
 </div>
 
