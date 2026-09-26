@@ -32,7 +32,13 @@
   </Target>
 
   <ItemGroup>
-    <Reference Include="$(InkCompilerPath)" Condition="'$(Configuration)' == 'Debug'" />
-    <Reference Include="$(InkRuntimePath)" />
+    <!-- Compiler: available in every configuration, shipped with the output. -->
+    <Reference Include="$(InkCompilerPath)">
+      <Private>true</Private>
+    </Reference>
+    <!-- Runtime: same — private so publish copies it next to the assembly. -->
+    <Reference Include="$(InkRuntimePath)">
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 </Project>

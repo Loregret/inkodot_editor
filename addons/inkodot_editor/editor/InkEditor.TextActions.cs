@@ -2,7 +2,7 @@ using Godot;
 using System;
 using System.Threading.Tasks;
 
-namespace InkEditor;
+namespace InkodotEditor;
 
 public partial class InkEditor
 {

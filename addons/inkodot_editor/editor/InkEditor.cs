@@ -6,14 +6,14 @@ using Godot;
 using Ink;
 using GodotInkle;
 
-namespace InkEditor;
+namespace InkodotEditor;
 
 using GC = Godot.Collections;
 
 [Tool]
 public sealed partial class InkEditor : CodeEdit
 {
-	[Export(PropertyHint.Dir)] public string MainFolder = "res://";
+	[Export] public string MainFolder = "/ink/";
 	[Export(PropertyHint.File, "*.ink")] public string? FilePath;
 
 	[ExportSubgroup("Ink Files")]
@@ -51,6 +51,15 @@ public sealed partial class InkEditor : CodeEdit
 		try
 		{
 			ProjectSettings.SetSetting("application/run/low_processor_mode", true);
+
+			// Standalone builds default to <executable_dir>/ink/ so the editor has
+			// a writable home next to the binary. The plugin, running inside the
+			// Godot editor, keeps its previous res:// default.
+			if (MainFolder.IsNullOrEmpty() || MainFolder == "res://")
+			{
+				MainFolder = GetStandaloneRoot();
+			}
+
 			CreateMenu();
 
 			TextChanged += () => Update().Forget();
@@ -61,6 +70,72 @@ public sealed partial class InkEditor : CodeEdit
 		{
 			GD.PrintErr($"{ex}");
 		}
+	}
+
+	/// <summary>
+	/// Resolves the folder the standalone editor uses as its home. Prefers
+	/// &lt;exe_dir&gt;/ink/; falls back to &lt;user_data_dir&gt;/ink/ when the
+	/// executable directory is unusable (e.g. running under the Godot editor,
+	/// or installed to a read-only location).
+	/// </summary>
+	static string GetStandaloneRoot()
+	{
+		var exePath = OS.GetExecutablePath();
+		GD.Print($"[Inkodot] Executable path: '{exePath}'");
+
+		var exeDir = exePath.GetBaseDir();
+
+		// macOS .app bundles: walk out of Contents/MacOS/ so we don't try to
+		// write inside the bundle. Guard on GetFile() so a non-bundle path
+		// never triggers the walk.
+		if (OS.HasFeature("macos") && exeDir.GetFile() == "MacOS")
+		{
+			exeDir = exeDir.GetBaseDir().GetBaseDir().GetBaseDir();
+			GD.Print($"[Inkodot] macOS bundle detected, walked out to: '{exeDir}'");
+		}
+
+		// Sanity: the resolved dir must be an absolute path that actually exists,
+		// and must not be the filesystem root (which usually means we walked too
+		// far, or GetBaseDir() returned nothing useful).
+		var exeDirValid =
+			!exeDir.IsNullOrEmpty() &&
+			exeDir != "/" &&
+			exeDir.IsAbsolutePath() &&
+			DirAccess.DirExistsAbsolute(exeDir);
+
+		if (!exeDirValid)
+		{
+			GD.PushWarning(
+				$"[Inkodot] Executable directory is unusable (got '{exeDir}'). " +
+				"Falling back to user data directory.");
+
+			var fallback = OS.GetUserDataDir().PathJoin("ink");
+			DirAccess.MakeDirRecursiveAbsolute(fallback);
+			return fallback;
+		}
+
+		var root = exeDir.PathJoin("ink");
+
+#if DEBUG
+		GD.Print($"[Inkodot] Using root folder: '{root}'");
+#endif
+
+		if (!DirAccess.DirExistsAbsolute(root))
+		{
+			var err = DirAccess.MakeDirRecursiveAbsolute(root);
+			if (err != Error.Ok)
+			{
+				GD.PushWarning(
+					$"[Inkodot] Could not create {root} (error {err}). " +
+					"Falling back to user data directory.");
+
+				var fallback = OS.GetUserDataDir().PathJoin("ink");
+				DirAccess.MakeDirRecursiveAbsolute(fallback);
+				return fallback;
+			}
+		}
+
+		return root;
 	}
 
 	public async Task Update(bool newFile = false)

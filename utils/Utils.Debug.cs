@@ -1,6 +1,6 @@
 using Godot;
 
-namespace InkEditor;
+namespace InkodotEditor;
 
 public static partial class Utils
 {

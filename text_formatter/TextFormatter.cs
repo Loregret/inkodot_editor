@@ -3,7 +3,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using Godot;
 
-namespace InkEditor;
+namespace InkodotEditor;
 
 [GlobalClass, Tool, Icon("uid://mhdwjl1ydy8n")]
 public partial class TextFormatter : Resource

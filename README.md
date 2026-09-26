@@ -13,9 +13,9 @@ Write, preview, and ship interactive narrative — as a Godot plugin or as a sta
 
 <div align="center">
 
-| | | |
-|:--:|:--:|:--:|
-| <img src="screenshots/screenshot1.png" width="260"/> | <img src="screenshots/screenshot2.png" width="260"/> | <img src="screenshots/screenshot3.png" width="260"/> |
+| Standalone App | Godot Plugin |
+|:--:|:--:
+| <img src="screenshots/screenshot1.png" width="512"/> | <img src="screenshots/screenshot_plugin.png" width="512"/> |
 
 </div>
 

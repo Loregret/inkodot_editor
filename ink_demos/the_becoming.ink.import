@@ -1,0 +1,15 @@
+[remap]
+
+importer="ink_story_importer"
+type="Resource"
+uid="uid://bvtd1xlonbek3"
+path="res://.godot/imported/the_becoming.ink-f124d39e23e635753b4b9a8668a40a16.res"
+
+[deps]
+
+source_file="res://ink_demos/the_becoming.ink"
+dest_files=["res://.godot/imported/the_becoming.ink-f124d39e23e635753b4b9a8668a40a16.res"]
+
+[params]
+
+is_main_file=true

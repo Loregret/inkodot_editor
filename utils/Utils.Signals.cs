@@ -1,7 +1,7 @@
 using Godot;
 using System;
 
-namespace InkEditor;
+namespace InkodotEditor;
 
 public static class Signals
 {

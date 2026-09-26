@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Threading.Tasks;
 
-namespace InkEditor;
+namespace InkodotEditor;
 
 using GC = Godot.Collections;
 

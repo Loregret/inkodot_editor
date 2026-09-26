@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Godot;
 
-namespace InkEditor;
+namespace InkodotEditor;
 
 using CT = CancellationToken;
 
