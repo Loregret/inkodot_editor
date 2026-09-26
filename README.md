@@ -7,14 +7,17 @@
 Write, preview, and ship interactive narrative — as a Godot plugin or as a standalone desktop app.
 
 [![Godot 4](https://img.shields.io/badge/Godot-4.x-478CBF?logo=godot-engine&logoColor=white)](https://godotengine.org)
-[![.NET](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-informational)](#-two-ways-to-run-it)
 
-<!-- Replace with a real screenshot of the editor with a file open -->
-[![Inkodot Editor screenshot](screenshots/screenshot1.png)]
-[![Inkodot Editor screenshot](screenshots/screenshot2.png)]
-[![Inkodot Editor screenshot](screenshots/screenshot3.png)]
+<div align="center">
+
+| | | |
+|:--:|:--:|:--:|
+| <img src="screenshots/screenshot1.png" width="260"/> | <img src="screenshots/screenshot2.png" width="260"/> | <img src="screenshots/screenshot3.png" width="260"/> |
+
+</div>
 
 </div>
 
