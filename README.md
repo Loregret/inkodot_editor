@@ -12,7 +12,9 @@ Write, preview, and ship interactive narrative — as a Godot plugin or as a sta
 [![Platforms](https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux-informational)](#-two-ways-to-run-it)
 
 <!-- Replace with a real screenshot of the editor with a file open -->
-<!-- ![Inkodot Editor screenshot](docs/screenshot.png) -->
+[![Inkodot Editor screenshot]](screenshots/screenshot1.png)
+[![Inkodot Editor screenshot]](screenshots/screenshot2.png)
+[![Inkodot Editor screenshot]](screenshots/screenshot3.png)
 
 </div>
 
@@ -235,9 +237,9 @@ Issues and pull requests are welcome. When reporting a bug, please include:
 
 ## 📄 License
 
-MIT — see [LICENSE](LICENSE) for the full text.
+MIT — see [LICENSE](LICENSE.md) for the full text.
 
-Inkodot Editor bundles the [ink](https://github.com/inkle/ink) runtime and compiler, which are also MIT-licensed. Their copyright notices are preserved in [`THIRD_PARTY.md`](THIRD_PARTY.md).
+Inkodot Editor bundles the [ink](https://github.com/inkle/ink) runtime and compiler, which are also MIT-licensed.
 
 ---
 

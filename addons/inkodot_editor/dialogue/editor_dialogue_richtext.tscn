@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://wkjc00jaef0t"]
 
-[ext_resource type="FontFile" uid="uid://bp3jiaex2svfs" path="res://assets/fonts/sans/nunito/nunito_regular.ttf" id="1_vpr3q"]
-[ext_resource type="FontFile" uid="uid://d4niubsk7tspi" path="res://assets/fonts/sans/nunito/nunito_semibold.ttf" id="2_4p4j0"]
-[ext_resource type="FontFile" uid="uid://blk8chixn3wxy" path="res://assets/fonts/sans/nunito/nunito_semibolditalic.ttf" id="3_upcu2"]
-[ext_resource type="FontFile" uid="uid://cj73vu2v5fscf" path="res://assets/fonts/sans/nunito/nunito_italic.ttf" id="4_106rh"]
-[ext_resource type="FontFile" uid="uid://dncplol3my0ck" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_thin.ttf" id="5_6u1ry"]
+[ext_resource type="FontFile" uid="uid://cb3hsnr6fig66" path="res://assets/fonts/serif/libertinus_serif/libertinusserif_regular.ttf" id="1_qv13p"]
+[ext_resource type="FontFile" uid="uid://xpxx32g7sprk" path="res://assets/fonts/serif/libertinus_serif/libertinusserif_bold.ttf" id="2_qv13p"]
+[ext_resource type="FontFile" uid="uid://cqugbe4qhfu5p" path="res://assets/fonts/serif/libertinus_serif/libertinusserif_bolditalic.ttf" id="3_0278p"]
+[ext_resource type="FontFile" uid="uid://bjdc0slou7esm" path="res://assets/fonts/serif/libertinus_serif/libertinusserif_italic.ttf" id="4_p65kg"]
+[ext_resource type="FontFile" uid="uid://bvm1mx6uw335n" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_light.ttf" id="5_2ribb"]
 
 [node name="RichText" type="RichTextLabel" unique_id=247915054]
 anchors_preset = 15
@@ -14,11 +14,11 @@ grow_horizontal = 2
 grow_vertical = 2
 focus_mode = 2
 theme_override_constants/paragraph_separation = 13
-theme_override_fonts/normal_font = ExtResource("1_vpr3q")
-theme_override_fonts/bold_font = ExtResource("2_4p4j0")
-theme_override_fonts/bold_italics_font = ExtResource("3_upcu2")
-theme_override_fonts/italics_font = ExtResource("4_106rh")
-theme_override_fonts/mono_font = ExtResource("5_6u1ry")
+theme_override_fonts/normal_font = ExtResource("1_qv13p")
+theme_override_fonts/bold_font = ExtResource("2_qv13p")
+theme_override_fonts/bold_italics_font = ExtResource("3_0278p")
+theme_override_fonts/italics_font = ExtResource("4_p65kg")
+theme_override_fonts/mono_font = ExtResource("5_2ribb")
 bbcode_enabled = true
 fit_content = true
 scroll_active = false
