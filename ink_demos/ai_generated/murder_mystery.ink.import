@@ -1,0 +1,15 @@
+[remap]
+
+importer="ink_story_importer"
+type="Resource"
+uid="uid://bsipp5kww1mdi"
+path="res://.godot/imported/murder_mystery.ink-b8bea4c91c9fee22ca3769938eeb4dee.res"
+
+[deps]
+
+source_file="res://ink_demos/ai_generated/murder_mystery.ink"
+dest_files=["res://.godot/imported/murder_mystery.ink-b8bea4c91c9fee22ca3769938eeb4dee.res"]
+
+[params]
+
+is_main_file=true
