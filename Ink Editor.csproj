@@ -7,7 +7,7 @@
     <RootNamespace>InkEditor</RootNamespace>
   </PropertyGroup>
 
-  <!-- GodotInk -->
-<Import Project="addons\godot_ink\GodotInk.props" />
+  <!-- Ink -->
+<Import Project="addons\ink\GodotInk.props" />
 
 </Project>

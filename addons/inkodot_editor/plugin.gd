@@ -1,8 +1,8 @@
 @tool
 extends EditorPlugin
 
-@export var editor_scene := preload("res://addons/dialogue_editor/editor/InkEditor.tscn")
-@export var icon := preload("res://addons/dialogue_editor/icon.svg")
+@export var editor_scene := preload("res://addons/inkodot_editor/editor/InkEditor.tscn")
+@export var icon := preload("res://addons/inkodot_editor/icon.svg")
 
 var dock_content
 

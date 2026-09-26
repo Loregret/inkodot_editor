@@ -10,7 +10,8 @@ config_version=5
 
 [application]
 
-config/name="Ink Editor"
+config/name="Inkodot Editor"
+config/description="A cross-platform editor for Ink dialogue, built in Godot 4. Ships both as a Godot editor plugin and as a standalone desktop application — same codebase, two ways to use it."
 run/main_scene="uid://e7n1blit5uca"
 config/features=PackedStringArray("4.7", "C#", "GL Compatibility")
 config/icon="res://icon.svg"
@@ -28,7 +29,7 @@ project/assembly_name="Ink Editor"
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_ink/plugin.cfg")
+enabled=PackedStringArray("res://addons/ink/plugin.cfg")
 
 [physics]
 
