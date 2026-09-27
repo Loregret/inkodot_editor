@@ -38,8 +38,11 @@ public sealed partial class InkEditor : CodeEdit
 
 	readonly HashSet<int> ColoredLines = [];
 
-	// todo -> 1. Search, 2. Adding new File
+	// --- Session persistence -----------------------------------------------
 
+	const string ConfigPath = "user://inkodot.cfg";
+	const string SessionSection = "session";
+	const string LastFolderKey = "last_folder";
 
 
 	//> Main
@@ -52,12 +55,21 @@ public sealed partial class InkEditor : CodeEdit
 		{
 			ProjectSettings.SetSetting("application/run/low_processor_mode", true);
 
-			// Standalone builds default to <executable_dir>/ink/ so the editor has
-			// a writable home next to the binary. The plugin, running inside the
-			// Godot editor, keeps its previous res:// default.
+			// Resolve the initial workspace:
+			//   1. The user's last-opened folder, if it still exists on disk.
+			//   2. The standalone app's default (<exe>/ink/), or res:// in plugin mode.
 			if (MainFolder.IsNullOrEmpty() || MainFolder == "res://")
 			{
-				MainFolder = GetStandaloneRoot();
+				var saved = LoadLastFolder();
+				if (!saved.IsNullOrEmpty())
+				{
+					MainFolder = saved;
+					GD.Print($"[Inkodot] Restored last folder: '{saved}'");
+				}
+				else
+				{
+					MainFolder = GetStandaloneRoot();
+				}
 			}
 
 			CreateMenu();
@@ -65,7 +77,6 @@ public sealed partial class InkEditor : CodeEdit
 			TextChanged += () => Update().Forget();
 			Update(true).Forget();
 		}
-
 		catch (Exception ex)
 		{
 			GD.PrintErr($"{ex}");
@@ -136,6 +147,43 @@ public sealed partial class InkEditor : CodeEdit
 		}
 
 		return root;
+	}
+
+	/// <summary>
+	/// Returns the last-saved workspace folder if it exists on disk, otherwise "".
+	/// A saved path that has been moved or deleted is treated as absent, so the
+	/// caller falls back to the default.
+	/// </summary>
+	static string LoadLastFolder()
+	{
+		var cfg = new ConfigFile();
+		if (cfg.Load(ConfigPath) != Error.Ok) return "";
+
+		var value = cfg.GetValue(SessionSection, LastFolderKey, "");
+		var path = value.AsString();
+
+		if (path.IsNullOrEmpty()) return "";
+		if (!DirAccess.DirExistsAbsolute(path)) return "";
+
+		return path;
+	}
+
+	/// <summary>
+	/// Persists the current MainFolder as the last-opened folder. Called by the
+	/// UI whenever the user explicitly picks a folder — never on automatic
+	/// defaults, so a moved executable still derives a fresh &lt;exe&gt;/ink/ path.
+	/// </summary>
+	public void SaveLastFolder()
+	{
+		if (MainFolder.IsNullOrEmpty()) return;
+
+		var cfg = new ConfigFile();
+		cfg.Load(ConfigPath);   // preserves any other sections we add later
+		cfg.SetValue(SessionSection, LastFolderKey, MainFolder);
+
+		var err = cfg.Save(ConfigPath);
+		if (err != Error.Ok)
+			GD.PushWarning($"[Inkodot] Could not save session config: {err}");
 	}
 
 	public async Task Update(bool newFile = false)

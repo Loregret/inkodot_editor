@@ -1,8 +1,8 @@
 [gd_scene format=3 uid="uid://8kb5qsfatcxy"]
 
-[ext_resource type="Script" uid="uid://dcd2aoaf5okk8" path="res://addons/dialogue_editor/dialogue/editor_dialogue.gd" id="1_wru2s"]
+[ext_resource type="Script" uid="uid://dcd2aoaf5okk8" path="res://addons/inkodot_editor/dialogue/editor_dialogue.gd" id="1_wru2s"]
 [ext_resource type="Script" uid="uid://bjxnsg23s5onq" path="res://text_formatter/TextFormatter.cs" id="2_ms2n6"]
-[ext_resource type="PackedScene" uid="uid://wkjc00jaef0t" path="res://addons/dialogue_editor/dialogue/editor_dialogue_richtext.tscn" id="3_isn8k"]
+[ext_resource type="PackedScene" uid="uid://wkjc00jaef0t" path="res://addons/inkodot_editor/dialogue/editor_dialogue_richtext.tscn" id="3_isn8k"]
 [ext_resource type="PackedScene" uid="uid://comac77ke5g7o" path="res://user_interface/ink_dialogue/choice_button/DialogueChoiceButton.tscn" id="4_dqlj8"]
 
 [sub_resource type="Resource" id="Resource_3hblv"]

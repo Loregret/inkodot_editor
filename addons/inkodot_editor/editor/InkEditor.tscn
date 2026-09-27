@@ -1,9 +1,11 @@
 [gd_scene format=3 uid="uid://e7n1blit5uca"]
 
+[ext_resource type="Script" uid="uid://bkh2103o4nwd5" path="res://addons/inkodot_editor/editor/ink_editor_root.gd" id="1_drkxy"]
 [ext_resource type="FontFile" uid="uid://bvm1mx6uw335n" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_light.ttf" id="1_wqaw2"]
 [ext_resource type="SyntaxHighlighter" uid="uid://bammdbah3vl60" path="res://addons/inkodot_editor/syntax/ink_syntax_highlighter.tres" id="2_pux6q"]
 [ext_resource type="Script" uid="uid://b8ftvtj8sjshd" path="res://addons/inkodot_editor/editor/InkEditor.cs" id="3_pppn0"]
 [ext_resource type="PackedScene" uid="uid://8kb5qsfatcxy" path="res://addons/inkodot_editor/dialogue/editor_dialogue.tscn" id="4_e8xbx"]
+[ext_resource type="PackedScene" uid="uid://bisdqn1c1dv1m" path="res://search_popup/search_popup.tscn" id="4_lokl3"]
 [ext_resource type="Texture2D" uid="uid://c0oqjcidhjrmi" path="res://assets/icons/gui/restart.svg" id="5_54cce"]
 [ext_resource type="FontFile" uid="uid://cn66q2u35f5oh" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_bold.ttf" id="5_e8xbx"]
 [ext_resource type="Texture2D" uid="uid://buwgt770c7to4" path="res://assets/icons/gui/back.svg" id="6_54cce"]
@@ -17,6 +19,7 @@ extends PopupMenu
 enum id_list {
 	NEW_FILE = 1,
 	OPEN_FOLDER,
+	SEARCH,
 	SAVE_SESSION,
 	DISCARD_SESSION,
 }
@@ -25,6 +28,8 @@ func _ready():
 	clear(true)
 	add_item(\"New File\", id_list.NEW_FILE)
 	add_item(\"Open Folder\", id_list.OPEN_FOLDER)
+	add_separator()
+	add_item(\"Search\", id_list.SEARCH)     # <- new
 	add_separator()
 	add_item(\"Save Session\", id_list.SAVE_SESSION)
 	add_item(\"Discard Session\", id_list.DISCARD_SESSION)
@@ -35,8 +40,12 @@ func _on_id_pressed(id: int):
 	match id:
 		id_list.NEW_FILE: new_file()
 		id_list.OPEN_FOLDER: show_open_dialog()
+		id_list.SEARCH: search()            # <- new
 		id_list.SAVE_SESSION: save_session()
 		id_list.DISCARD_SESSION: discard_session()
+
+func search():
+	%SearchPopup.open_with_focus()
 
 #region New File
 
@@ -93,9 +102,20 @@ func _on_folder_chosen(status: bool, selected_paths: PackedStringArray, selected
 	if not status: return
 	var new_path := selected_paths[selected_filter_index]
 	%CodeEdit.MainFolder = new_path
+	%CodeEdit.SaveLastFolder()
 	%FileTree.regenerate_tree()
 
 #endregion
+"
+
+[sub_resource type="GDScript" id="GDScript_cnk3w"]
+resource_name = "Search button"
+script/source = "extends Button
+
+
+func _pressed() -> void:
+	if !%SearchPopup.visible: %SearchPopup.open_with_focus()
+	else: %SearchPopup.hide()
 "
 
 [sub_resource type="LabelSettings" id="LabelSettings_e8xbx"]
@@ -937,6 +957,8 @@ func _on_select():
 	deselect_all()
 "
 
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_cnk3w"]
+
 [sub_resource type="GDScript" id="GDScript_767nh"]
 resource_name = "RestartButton"
 script/source = "@tool
@@ -998,22 +1020,82 @@ extends RichTextLabel
 
 
 func _ready():
-	if not code_edit: return
+	bbcode_enabled = true
+	meta_clicked.connect(_on_meta_clicked)
+	meta_hover_started.connect(_on_meta_hover_started)
+	meta_hover_ended.connect(_on_meta_hover_ended)
+
+	if not code_edit:
+		return
 	code_edit.OnTextUpdated.connect(_on_text_updated)
+	_on_text_updated()
+
 
 func _on_text_updated():
-	text = \"\"
-	if not code_edit: return
-	
-	var errors: Dictionary[int, String] = code_edit.Errors
-	for error_line in errors.keys():
-		var error_str = errors[error_line]
-		append_text(\"[color=red][b]%s[/b]: %s[/color]\\n\" % [error_line, error_str])
-	
-	var warnings: Dictionary[int, String] = code_edit.Warnings
-	for warn_line in warnings.keys():
-		var warn_str = warnings[warn_line]
-		append_text(\"[color=yellow][b]%s[/b]: %s[/color]\\n\" % [warn_line, warn_str])
+	clear()
+	if not code_edit:
+		return
+
+	var errors: Dictionary = code_edit.Errors
+	for line in _sorted_keys(errors):
+		append_text(_format_entry(line, errors[line], \"red\"))
+
+	var warnings: Dictionary = code_edit.Warnings
+	for line in _sorted_keys(warnings):
+		append_text(_format_entry(line, warnings[line], \"yellow\"))
+
+
+## Builds one clickable line: \"20: Divert target not found\".
+## The meta payload of the [url] is the 1-based line number, which
+## _on_meta_clicked decodes and hands off to the code editor.
+func _format_entry(line: int, message: String, color: String) -> String:
+	var safe_msg := _escape_bbcode(message)
+	return \"[url=%d][color=%s][b]%d[/b]: %s[/color][/url]\\n\" % [
+		line, color, line, safe_msg]
+
+
+## Literal `[` in an ink message would otherwise be parsed as BBCode.
+func _escape_bbcode(s: String) -> String:
+	return s.replace(\"[\", \"[lb]\")
+
+
+func _sorted_keys(dict: Dictionary) -> Array:
+	var keys := dict.keys()
+	keys.sort()
+	return keys
+
+
+#region Click handling
+
+func _on_meta_clicked(meta: Variant) -> void:
+	var line := int(str(meta))
+	if line <= 0:
+		return
+	_goto_line(line)
+
+
+func _on_meta_hover_started(_meta: Variant) -> void:
+	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+
+func _on_meta_hover_ended(_meta: Variant) -> void:
+	mouse_default_cursor_shape = Control.CURSOR_ARROW
+
+
+## Jumps the caret to the given 1-based line in the code editor.
+## Errors dictionary stores 1-based line numbers, CodeEdit uses 0-based.
+func _goto_line(one_based_line: int) -> void:
+	if not is_instance_valid(code_edit):
+		return
+
+	var zero_based := clampi(one_based_line - 1, 0, code_edit.get_line_count() - 1)
+
+	code_edit.grab_focus()
+	code_edit.set_caret_line(zero_based)
+	code_edit.set_caret_column(0)
+	code_edit.center_viewport_to_caret()
+
+#endregion
 "
 
 [sub_resource type="GDScript" id="GDScript_e8xbx"]
@@ -1080,6 +1162,7 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+script = ExtResource("1_drkxy")
 metadata/_edit_use_anchors_ = true
 
 [node name="MarginContainer" type="MarginContainer" parent="." unique_id=1027083304]
@@ -1101,18 +1184,30 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 14
 
 [node name="File" type="PopupMenu" parent="MarginContainer/VBoxContainer/Title/MenuBar" unique_id=96606163]
-item_count = 5
+oversampling_override = 1.0
+size = Vector2i(161, 151)
+item_count = 7
 item_0/text = "New File"
 item_0/id = 1
 item_1/text = "Open Folder"
 item_1/id = 2
 item_2/id = -1
 item_2/separator = true
-item_3/text = "Save Session"
+item_3/text = "Search"
 item_3/id = 3
-item_4/text = "Discard Session"
-item_4/id = 4
+item_4/id = -1
+item_4/separator = true
+item_5/text = "Save Session"
+item_5/id = 4
+item_6/text = "Discard Session"
+item_6/id = 5
 script = SubResource("GDScript_aqlu3")
+
+[node name="Button" type="Button" parent="MarginContainer/VBoxContainer/Title" unique_id=1703944865]
+layout_mode = 2
+theme_override_font_sizes/font_size = 12
+text = "Search"
+script = SubResource("GDScript_cnk3w")
 
 [node name="Title" type="Label" parent="MarginContainer/VBoxContainer/Title" unique_id=708499872]
 unique_name_in_owner = true
@@ -1171,21 +1266,47 @@ enable_drag_unfolding = false
 hide_root = true
 script = SubResource("GDScript_yj2lj")
 
-[node name="CodeEdit" type="CodeEdit" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer" unique_id=903838472 node_paths=PackedStringArray("DialogueNode")]
+[node name="VSplitContainer" type="VSplitContainer" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer" unique_id=517818052]
+layout_mode = 2
+size_flags_horizontal = 3
+split_offsets = PackedInt32Array(31)
+split_offset = 31
+
+[node name="PanelContainer" type="PanelContainer" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer" unique_id=861232361]
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_cnk3w")
+
+[node name="HBoxContainer" type="HBoxContainer" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer/PanelContainer" unique_id=341818686]
+layout_mode = 2
+
+[node name="LineEdit" type="LineEdit" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer/PanelContainer/HBoxContainer" unique_id=2092953024]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Search input..."
+
+[node name="SearchPrev" type="Button" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer/PanelContainer/HBoxContainer" unique_id=943504019]
+layout_mode = 2
+text = "Prev"
+
+[node name="SearchNext" type="Button" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer/PanelContainer/HBoxContainer" unique_id=651069883]
+layout_mode = 2
+text = "Next"
+
+[node name="SearchClose" type="Button" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer/PanelContainer/HBoxContainer" unique_id=112226703]
+layout_mode = 2
+text = "x"
+
+[node name="Label" type="Label" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer/PanelContainer/HBoxContainer" unique_id=1397399786]
+layout_mode = 2
+
+[node name="CodeEdit" type="CodeEdit" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer" unique_id=903838472 node_paths=PackedStringArray("DialogueNode")]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_fonts/font = ExtResource("1_wqaw2")
 theme_override_font_sizes/font_size = 13
-text = "Once upon a time...
-
- * There were two choices.
- * There were four lines of content.
-
-- They lived happily ever after.
-    -> END
-"
 backspace_deletes_composite_character_enabled = true
 wrap_mode = 1
 indent_wrapped_lines = true
@@ -1208,8 +1329,13 @@ auto_brace_completion_enabled = true
 auto_brace_completion_highlight_matching = true
 script = ExtResource("3_pppn0")
 MainFolder = "res://"
-DialogueNode = NodePath("../../VBoxContainer/Dialogue")
+DialogueNode = NodePath("../../../VBoxContainer/Dialogue")
 metadata/_edit_use_anchors_ = true
+
+[node name="SearchPopup" parent="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer" unique_id=227811149 node_paths=PackedStringArray("code_edit") instance=ExtResource("4_lokl3")]
+unique_name_in_owner = true
+visible = false
+code_edit = NodePath("../CodeEdit")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="MarginContainer/VBoxContainer/MainPanel/TextContent" unique_id=558623495]
 layout_mode = 2
@@ -1276,7 +1402,7 @@ text = "[color=dim_gray]Line for errors...[/color]"
 fit_content = true
 selection_enabled = true
 script = SubResource("GDScript_yapq3")
-code_edit = NodePath("../../../../TextContent/HBoxContainer/CodeEdit")
+code_edit = NodePath("../../../../TextContent/HBoxContainer/VSplitContainer/CodeEdit")
 metadata/_edit_use_anchors_ = true
 
 [node name="LineCount" type="RichTextLabel" parent="MarginContainer/VBoxContainer" unique_id=775675516 node_paths=PackedStringArray("code_edit")]
@@ -1296,7 +1422,7 @@ bbcode_enabled = true
 fit_content = true
 horizontal_alignment = 2
 script = SubResource("GDScript_e8xbx")
-code_edit = NodePath("../MainPanel/TextContent/HBoxContainer/CodeEdit")
+code_edit = NodePath("../MainPanel/TextContent/HBoxContainer/VSplitContainer/CodeEdit")
 
 [node name="OpenDialog" type="FileDialog" parent="." unique_id=72237044]
 unique_name_in_owner = true
@@ -1516,3 +1642,5 @@ dialog_text = "Are you sure you want to delete this?"
 [connection signal="close_requested" from="NewFolderPopup" to="NewFolderPopup" method="hide"]
 [connection signal="pressed" from="NewFolderPopup/BoxContainer/HBoxContainer/CancelButton" to="NewFolderPopup" method="hide"]
 [connection signal="canceled" from="DeleteConfirmationDialog" to="DeleteConfirmationDialog" method="hide"]
+
+[editable path="MarginContainer/VBoxContainer/MainPanel/TextContent/HBoxContainer/VSplitContainer/SearchPopup"]

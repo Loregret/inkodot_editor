@@ -178,7 +178,7 @@ func _show_choices() -> void:
 			button.Button.button_up.connect(_on_choice_pressed.bind(button, choice.get_index(), true))
 
 		choice_container.add_child(button)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.set_anchors_preset(Control.PRESET_FULL_RECT)
 
 		# Wait one frame for layout, then scroll to the button
 		if scroll_to_bottom and scroll_container:
