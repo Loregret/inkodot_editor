@@ -7,7 +7,10 @@
     <RootNamespace>InkodotEditor</RootNamespace>
   </PropertyGroup>
 
-  <!-- Ink -->
-<Import Project="addons\ink\GodotInk.props" />
+  <PropertyGroup>
+    <InkodotStandaloneApp>true</InkodotStandaloneApp> <!-- controls Compiler shipment to release build -->
+  </PropertyGroup>
+
+  <Import Project="addons\ink\Ink.props" />
 
 </Project>

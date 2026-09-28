@@ -1,11 +1,13 @@
 <Project>
   <PropertyGroup>
     <InkVersion>v1.2.1</InkVersion>
+
     <!-- Directories -->
     <GodotDotDirectory>$([System.IO.Path]::Combine($(GodotProjectDir),'.godot'))</GodotDotDirectory>
     <GodotMonoDirectory>$([System.IO.Path]::Combine($(GodotDotDirectory),'mono'))</GodotMonoDirectory>
     <UnzipDirectory>$([System.IO.Path]::Combine($(GodotDotDirectory),'ink'))</UnzipDirectory>
     <InkVersionDirectory>$([System.IO.Path]::Combine($(GodotMonoDirectory),'ink-$(InkVersion)'))</InkVersionDirectory>
+
     <!-- File -->
     <InkZip>inklecate_windows.zip</InkZip>
     <InkZipPath>$([System.IO.Path]::Combine($(GodotDotDirectory),$(InkZip)))</InkZipPath>
@@ -16,27 +18,47 @@
     <InkRuntimePath>$([System.IO.Path]::Combine($(InkVersionDirectory),$(InkRuntime)))</InkRuntimePath>
   </PropertyGroup>
 
+  <!-- The importing project can set InkodotStandaloneApp=true before this
+       import to signal that it is the editor itself and needs the compiler
+       at runtime. Left unset (the default) means "this props is being
+       consumed by someone else's project that has us installed as a
+       plugin" — in which case the compiler is only pulled in for Debug. -->
+  <PropertyGroup Condition="'$(InkodotStandaloneApp)' == ''">
+    <InkodotStandaloneApp>false</InkodotStandaloneApp>
+  </PropertyGroup>
+
   <Target Name="DownloadInkDependency" AfterTargets="BeforeBuild" Condition="!Exists('$(InkCompilerPath)') Or !Exists('$(InkRuntimePath)')">
     <!-- Download and unzip -->
     <DownloadFile SourceUrl="$(InkUrl)" DestinationFolder="$(GodotDotDirectory)" />
     <Unzip SourceFiles="$(InkZipPath)" DestinationFolder="$(UnzipDirectory)" />
+
     <!-- Extract what we want -->
     <ItemGroup>
       <FilesToMove Include="$([System.IO.Path]::Combine($(UnzipDirectory),$(InkCompiler)))" />
       <FilesToMove Include="$([System.IO.Path]::Combine($(UnzipDirectory),$(InkRuntime)))" />
     </ItemGroup>
+
     <Move SourceFiles="@(FilesToMove)" DestinationFolder="$(InkVersionDirectory)" />
+
     <!-- Cleanup -->
     <Delete Files="$(InkZipPath)" />
     <RemoveDir Directories="$(UnzipDirectory)" />
   </Target>
 
   <ItemGroup>
-    <!-- Compiler: available in every configuration, shipped with the output. -->
-    <Reference Include="$(InkCompilerPath)">
-      <Private>true</Private>
+    <!-- Compiler:
+           - Standalone app (any config) → include, copy locally
+           - Plugin, Debug               → include, copy locally
+           - Plugin, Release             → exclude
+         The "copy locally" matters: without <Private>true</Private>,
+         dotnet publish wouldn't place the DLL next to the assembly. -->
+    <Reference Include="$(InkCompilerPath)"
+               Condition="'$(Configuration)' == 'Debug' Or '$(InkodotStandaloneApp)' == 'true'">
+        <Private>true</Private>
     </Reference>
-    <!-- Runtime: same — private so publish copies it next to the assembly. -->
+
+    <!-- Runtime is always needed — the shipped story has to run at runtime
+         in every configuration. -->
     <Reference Include="$(InkRuntimePath)">
       <Private>true</Private>
     </Reference>

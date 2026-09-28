@@ -121,6 +121,19 @@ func _pressed() -> void:
 [sub_resource type="LabelSettings" id="LabelSettings_e8xbx"]
 font_size = 12
 
+[sub_resource type="LabelSettings" id="LabelSettings_drkxy"]
+font_size = 12
+font_color = Color(0.50140655, 0.5014065, 0.5014065, 1)
+
+[sub_resource type="GDScript" id="GDScript_telvs"]
+resource_name = "VersionLabel"
+script/source = "@tool
+extends Label
+
+func _ready() -> void:
+	text = \"v\" + ProjectSettings.get_setting(\"application/config/version\", \"\")
+"
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_e8xbx"]
 bg_color = Color(0.103743516, 0.103743546, 0.10374347, 1)
 
@@ -203,6 +216,7 @@ func check_save_state_recursive(item: TreeItem):
 	var children := item.get_children()
 	
 	for child in children:
+		if not child: continue
 		if child is not TreeItem: continue
 		
 		if child.get_metadata(0)[\"type\"] == types.FILE: 
@@ -1217,6 +1231,14 @@ text = "Untitled"
 label_settings = SubResource("LabelSettings_e8xbx")
 horizontal_alignment = 1
 vertical_alignment = 1
+
+[node name="Version" type="Label" parent="MarginContainer/VBoxContainer/Title" unique_id=1855240386]
+unique_name_in_owner = true
+layout_mode = 2
+label_settings = SubResource("LabelSettings_drkxy")
+horizontal_alignment = 1
+vertical_alignment = 1
+script = SubResource("GDScript_telvs")
 
 [node name="MainPanel" type="VSplitContainer" parent="MarginContainer/VBoxContainer" unique_id=1982671027]
 layout_mode = 2
