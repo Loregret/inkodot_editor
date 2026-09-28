@@ -1,6 +1,6 @@
 using Godot;
 
-namespace Dreamiour.GUI.DialogueSubNodes;
+namespace InkodotEditor;
 
 [Tool]
 public partial class DialogueChoiceButton : Control
