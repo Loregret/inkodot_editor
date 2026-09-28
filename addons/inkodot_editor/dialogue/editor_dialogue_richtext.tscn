@@ -1,13 +1,12 @@
 [gd_scene format=3 uid="uid://wkjc00jaef0t"]
 
-[ext_resource type="FontFile" uid="uid://cb3hsnr6fig66" path="res://assets/fonts/serif/libertinus_serif/libertinusserif_regular.ttf" id="1_qv13p"]
-[ext_resource type="FontFile" uid="uid://xpxx32g7sprk" path="res://assets/fonts/serif/libertinus_serif/libertinusserif_bold.ttf" id="2_qv13p"]
-[ext_resource type="FontFile" uid="uid://cqugbe4qhfu5p" path="res://assets/fonts/serif/libertinus_serif/libertinusserif_bolditalic.ttf" id="3_0278p"]
-[ext_resource type="FontFile" uid="uid://bjdc0slou7esm" path="res://assets/fonts/serif/libertinus_serif/libertinusserif_italic.ttf" id="4_p65kg"]
-[ext_resource type="FontFile" uid="uid://bvm1mx6uw335n" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_light.ttf" id="5_2ribb"]
+[ext_resource type="FontFile" uid="uid://cb3hsnr6fig66" path="res://addons/inkodot_editor/assets/fonts/serif/libertinus_serif/libertinusserif_regular.ttf" id="1_qv13p"]
+[ext_resource type="FontFile" uid="uid://xpxx32g7sprk" path="res://addons/inkodot_editor/assets/fonts/serif/libertinus_serif/libertinusserif_bold.ttf" id="2_qv13p"]
+[ext_resource type="FontFile" uid="uid://cqugbe4qhfu5p" path="res://addons/inkodot_editor/assets/fonts/serif/libertinus_serif/libertinusserif_bolditalic.ttf" id="3_0278p"]
+[ext_resource type="FontFile" uid="uid://bjdc0slou7esm" path="res://addons/inkodot_editor/assets/fonts/serif/libertinus_serif/libertinusserif_italic.ttf" id="4_p65kg"]
+[ext_resource type="FontFile" uid="uid://bvm1mx6uw335n" path="res://addons/inkodot_editor/assets/fonts/mono/jetbrains_mono/jetbrainsmono_light.ttf" id="5_2ribb"]
 
 [node name="RichText" type="RichTextLabel" unique_id=247915054]
-anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2

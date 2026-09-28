@@ -1,16 +1,16 @@
 [gd_scene format=3 uid="uid://e7n1blit5uca"]
 
 [ext_resource type="Script" uid="uid://bkh2103o4nwd5" path="res://addons/inkodot_editor/editor/ink_editor_root.gd" id="1_drkxy"]
-[ext_resource type="FontFile" uid="uid://bvm1mx6uw335n" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_light.ttf" id="1_wqaw2"]
+[ext_resource type="FontFile" uid="uid://bvm1mx6uw335n" path="res://addons/inkodot_editor/assets/fonts/mono/jetbrains_mono/jetbrainsmono_light.ttf" id="1_wqaw2"]
 [ext_resource type="SyntaxHighlighter" uid="uid://bammdbah3vl60" path="res://addons/inkodot_editor/syntax/ink_syntax_highlighter.tres" id="2_pux6q"]
 [ext_resource type="Script" uid="uid://b8ftvtj8sjshd" path="res://addons/inkodot_editor/editor/InkEditor.cs" id="3_pppn0"]
 [ext_resource type="PackedScene" uid="uid://8kb5qsfatcxy" path="res://addons/inkodot_editor/dialogue/editor_dialogue.tscn" id="4_e8xbx"]
-[ext_resource type="PackedScene" uid="uid://bisdqn1c1dv1m" path="res://search_popup/search_popup.tscn" id="4_lokl3"]
-[ext_resource type="Texture2D" uid="uid://c0oqjcidhjrmi" path="res://assets/icons/gui/restart.svg" id="5_54cce"]
-[ext_resource type="FontFile" uid="uid://cn66q2u35f5oh" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_bold.ttf" id="5_e8xbx"]
-[ext_resource type="Texture2D" uid="uid://buwgt770c7to4" path="res://assets/icons/gui/back.svg" id="6_54cce"]
-[ext_resource type="FontFile" uid="uid://doaeiw57pwvwg" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_bolditalic.ttf" id="6_cevi5"]
-[ext_resource type="FontFile" uid="uid://bd70hx8p0e0xl" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_italic.ttf" id="7_yj2lj"]
+[ext_resource type="PackedScene" uid="uid://bisdqn1c1dv1m" path="res://addons/inkodot_editor/search_popup/search_popup.tscn" id="4_lokl3"]
+[ext_resource type="Texture2D" uid="uid://c0oqjcidhjrmi" path="res://addons/inkodot_editor/assets/icons/gui/restart.svg" id="5_54cce"]
+[ext_resource type="FontFile" uid="uid://cn66q2u35f5oh" path="res://addons/inkodot_editor/assets/fonts/mono/jetbrains_mono/jetbrainsmono_bold.ttf" id="5_e8xbx"]
+[ext_resource type="Texture2D" uid="uid://buwgt770c7to4" path="res://addons/inkodot_editor/assets/icons/gui/back.svg" id="6_54cce"]
+[ext_resource type="FontFile" uid="uid://doaeiw57pwvwg" path="res://addons/inkodot_editor/assets/fonts/mono/jetbrains_mono/jetbrainsmono_bolditalic.ttf" id="6_cevi5"]
+[ext_resource type="FontFile" uid="uid://bd70hx8p0e0xl" path="res://addons/inkodot_editor/assets/fonts/mono/jetbrains_mono/jetbrainsmono_italic.ttf" id="7_yj2lj"]
 
 [sub_resource type="GDScript" id="GDScript_aqlu3"]
 script/source = "@tool
@@ -19,17 +19,27 @@ extends PopupMenu
 enum id_list {
 	NEW_FILE = 1,
 	OPEN_FOLDER,
-	SEARCH,
+	IMPORT_FILE,
+	EXPORT_FILE,
 	SAVE_SESSION,
 	DISCARD_SESSION,
 }
 
+var _is_mobile := false
+var _pending_export_path := \"\"
+
 func _ready():
+	_is_mobile = OS.has_feature(\"mobile\") or OS.has_feature(\"android\") or OS.has_feature(\"ios\")
+
 	clear(true)
 	add_item(\"New File\", id_list.NEW_FILE)
-	add_item(\"Open Folder\", id_list.OPEN_FOLDER)
-	add_separator()
-	add_item(\"Search\", id_list.SEARCH)     # <- new
+
+	if _is_mobile:
+		add_item(\"Import File...\", id_list.IMPORT_FILE)
+		add_item(\"Export File...\", id_list.EXPORT_FILE)
+	else:
+		add_item(\"Open Folder\", id_list.OPEN_FOLDER)
+
 	add_separator()
 	add_item(\"Save Session\", id_list.SAVE_SESSION)
 	add_item(\"Discard Session\", id_list.DISCARD_SESSION)
@@ -40,12 +50,11 @@ func _on_id_pressed(id: int):
 	match id:
 		id_list.NEW_FILE: new_file()
 		id_list.OPEN_FOLDER: show_open_dialog()
-		id_list.SEARCH: search()            # <- new
+		id_list.IMPORT_FILE: show_import_dialog()
+		id_list.EXPORT_FILE: show_export_dialog()
 		id_list.SAVE_SESSION: save_session()
 		id_list.DISCARD_SESSION: discard_session()
 
-func search():
-	%SearchPopup.open_with_focus()
 
 #region New File
 
@@ -56,8 +65,6 @@ func new_file():
 		return
 	%FileTree.open_new_file_dialog(dir)
 
-## Delegates to the tree's selection logic: dir if a dir is selected,
-## parent dir if a file is selected, MainFolder otherwise.
 func _resolve_new_file_dir() -> String:
 	var tree_dir: String = %FileTree.get_selected_target_dir()
 	if not tree_dir.is_empty() and DirAccess.dir_exists_absolute(tree_dir):
@@ -71,6 +78,7 @@ func _resolve_new_file_dir() -> String:
 
 #endregion
 
+
 #region Session
 
 func save_session():
@@ -83,14 +91,16 @@ func discard_session():
 
 #endregion
 
-#region Open Folder
 
-## Opens the OS folder picker, starting at the current MainFolder.
-## In standalone mode this is the folder next to the executable; in plugin
-## mode it's res://. Absolute OS paths and res:// paths both work here.
+#region Desktop — Open Folder
+
+## Desktop only. Opens the OS folder picker, starting at the current
+## MainFolder. In standalone desktop mode this is the folder next to the
+## executable; in plugin mode it's res://. Both absolute and res:// paths
+## work.
 func show_open_dialog():
-	var start = %CodeEdit.MainFolder as String
-	if not start:
+	var start := %CodeEdit.MainFolder as String
+	if not start or start.is_empty():
 		start = \"res://\"
 
 	DisplayServer.file_dialog_show(
@@ -104,6 +114,155 @@ func _on_folder_chosen(status: bool, selected_paths: PackedStringArray, selected
 	%CodeEdit.MainFolder = new_path
 	%CodeEdit.SaveLastFolder()
 	%FileTree.regenerate_tree()
+
+#endregion
+
+
+#region Mobile — Import / Export File
+
+## Mobile only. Opens the OS file picker, restricted to .ink files, and
+## copies the selected file into the workspace.
+##
+## On Android the picker returns a content:// URI, which Godot's FileAccess
+## can read on 4.4+. The file's original location is irrelevant — we grab
+## its bytes and write our own copy into <user_data>/ink/.
+func show_import_dialog():
+	DisplayServer.file_dialog_show(
+		\"Import Ink File\",
+		\"\", \".ink\", false,
+		DisplayServer.FILE_DIALOG_MODE_OPEN_FILE,
+		[\"*.ink\"],
+		_on_import_file_chosen)
+
+func _on_import_file_chosen(status: bool, selected_paths: PackedStringArray, _filter_index: int):
+	if not status or selected_paths.is_empty(): return
+
+	var src_uri := selected_paths[0]
+	_copy_uri_into_workspace(src_uri)
+
+
+## Copies the currently open file out to a location chosen by the user via
+## the OS save dialog.
+func show_export_dialog():
+	var source := %CodeEdit.FilePath as String
+	if not source or source.is_empty():
+		push_warning(\"[Inkodot]: No file is currently open to export.\")
+		return
+	if not FileAccess.file_exists(source):
+		push_warning(\"[Inkodot]: Source file no longer exists: %s\" % source)
+		return
+
+	_pending_export_path = source
+
+	DisplayServer.file_dialog_show(
+		\"Export Ink File\",
+		\"\", source.get_file(), false,
+		DisplayServer.FILE_DIALOG_MODE_SAVE_FILE,
+		[\"*.ink\"],
+		_on_export_file_chosen)
+
+func _on_export_file_chosen(status: bool, selected_paths: PackedStringArray, _filter_index: int):
+	var source := _pending_export_path
+	_pending_export_path = \"\"
+
+	if not status or selected_paths.is_empty(): return
+	if source.is_empty(): return
+
+	var dest_uri := selected_paths[0]
+
+	var src := FileAccess.open(source, FileAccess.READ)
+	if not src:
+		push_warning(\"[Inkodot]: Could not read source: %s\" % source)
+		return
+	var bytes := src.get_buffer(src.get_length())
+	src.close()
+
+	var dst := FileAccess.open(dest_uri, FileAccess.WRITE)
+	if not dst:
+		push_warning(\"[Inkodot]: Could not write to destination: %s\" % dest_uri)
+		return
+	dst.store_buffer(bytes)
+	dst.close()
+
+	print(\"[Inkodot]: Exported %s → %s\" % [source.get_file(), dest_uri])
+
+
+## Reads the file behind `src_uri`, copies its bytes into the workspace
+## folder, refreshes the tree, and selects the new entry.
+##
+## If a file with the same name already exists in the workspace, a numeric
+## suffix is appended (\"name (2).ink\") rather than overwriting.
+func _copy_uri_into_workspace(src_uri: String) -> bool:
+	var src := FileAccess.open(src_uri, FileAccess.READ)
+	if not src:
+		push_warning(\"[Inkodot]: Could not open %s\" % src_uri)
+		return false
+
+	var bytes := src.get_buffer(src.get_length())
+	src.close()
+
+	var fname := _extract_filename_from_uri(src_uri)
+	if not fname.ends_with(\".ink\"):
+		fname += \".ink\"
+
+	var dest_dir: String = %CodeEdit.MainFolder
+	if dest_dir.is_empty() or not DirAccess.dir_exists_absolute(dest_dir):
+		push_warning(\"[Inkodot]: Workspace folder is not available.\")
+		return false
+
+	var dest := dest_dir.path_join(fname)
+
+	if FileAccess.file_exists(dest):
+		var stem := fname.get_basename()
+		var ext := fname.get_extension()
+		var n := 2
+		while FileAccess.file_exists(dest) and n <= 100:
+			fname = \"%s (%d).%s\" % [stem, n, ext]
+			dest = dest_dir.path_join(fname)
+			n += 1
+
+		if n > 100:
+			push_warning(\"[Inkodot]: Too many files with that name already.\")
+			return false
+
+	var dst := FileAccess.open(dest, FileAccess.WRITE)
+	if not dst:
+		push_warning(\"[Inkodot]: Could not write to %s\" % dest)
+		return false
+	dst.store_buffer(bytes)
+	dst.close()
+
+	%FileTree.regenerate_tree()
+
+	var new_item := %FileTree.find_item_by_path(dest) as TreeItem
+	if new_item:
+		new_item.select(0)
+
+	print(\"[Inkodot]: Imported %s → %s\" % [src_uri, dest])
+	return true
+
+
+## Extracts a plausible filename from a content:// or file:// URI. Falls
+## back to \"imported.ink\" if nothing usable is found.
+func _extract_filename_from_uri(uri: String) -> String:
+	var u := uri.replace(\"\\\\\", \"/\")
+
+	# Strip query parameters (SAF sometimes appends them).
+	var q := u.find(\"?\")
+	if q >= 0:
+		u = u.substr(0, q)
+
+	var slash := u.rfind(\"/\")
+	var name := u.substr(slash + 1) if slash >= 0 else u
+
+	name = name.uri_decode()
+
+	# SAF \"document IDs\" can be long hashes with no extension — reject those
+	# and let the caller fall back.
+	if name.length() > 128 or name.is_empty():
+		name = \"imported.ink\"
+
+	return name
 
 #endregion
 "
@@ -1235,6 +1394,7 @@ vertical_alignment = 1
 [node name="Version" type="Label" parent="MarginContainer/VBoxContainer/Title" unique_id=1855240386]
 unique_name_in_owner = true
 layout_mode = 2
+text = "v1.1.0"
 label_settings = SubResource("LabelSettings_drkxy")
 horizontal_alignment = 1
 vertical_alignment = 1

@@ -13,7 +13,7 @@ using GC = Godot.Collections;
 [Tool]
 public sealed partial class InkEditor : CodeEdit
 {
-	[Export] public string MainFolder = "/ink/";
+	[Export(PropertyHint.Dir)] public string MainFolder = "res://";
 	[Export(PropertyHint.File, "*.ink")] public string? FilePath;
 
 	[ExportSubgroup("Ink Files")]
@@ -38,11 +38,12 @@ public sealed partial class InkEditor : CodeEdit
 
 	readonly HashSet<int> ColoredLines = [];
 
-	// --- Session persistence -----------------------------------------------
 
-	const string ConfigPath = "user://inkodot.cfg";
-	const string SessionSection = "session";
-	const string LastFolderKey = "last_folder";
+	//> Platform helpers
+
+	/// <summary> True when running on a mobile platform (Android / iOS). </summary>
+	public static bool IsMobile =>
+		OS.HasFeature("mobile") || OS.HasFeature("android") || OS.HasFeature("ios");
 
 
 	//> Main
@@ -57,7 +58,7 @@ public sealed partial class InkEditor : CodeEdit
 
 			// Resolve the initial workspace:
 			//   1. The user's last-opened folder, if it still exists on disk.
-			//   2. The standalone app's default (<exe>/ink/), or res:// in plugin mode.
+			//   2. The platform-appropriate default (see GetStandaloneRoot).
 			if (MainFolder.IsNullOrEmpty() || MainFolder == "res://")
 			{
 				var saved = LoadLastFolder();
@@ -72,6 +73,10 @@ public sealed partial class InkEditor : CodeEdit
 				}
 			}
 
+			// If the workspace is empty (first launch, or user cleared it),
+			// populate it with the demos bundled inside the .pck.
+			EnsureDemoFiles();
+
 			CreateMenu();
 
 			TextChanged += () => Update().Forget();
@@ -81,109 +86,6 @@ public sealed partial class InkEditor : CodeEdit
 		{
 			GD.PrintErr($"{ex}");
 		}
-	}
-
-	/// <summary>
-	/// Resolves the folder the standalone editor uses as its home. Prefers
-	/// &lt;exe_dir&gt;/ink/; falls back to &lt;user_data_dir&gt;/ink/ when the
-	/// executable directory is unusable (e.g. running under the Godot editor,
-	/// or installed to a read-only location).
-	/// </summary>
-	static string GetStandaloneRoot()
-	{
-		var exePath = OS.GetExecutablePath();
-		GD.Print($"[Inkodot] Executable path: '{exePath}'");
-
-		var exeDir = exePath.GetBaseDir();
-
-		// macOS .app bundles: walk out of Contents/MacOS/ so we don't try to
-		// write inside the bundle. Guard on GetFile() so a non-bundle path
-		// never triggers the walk.
-		if (OS.HasFeature("macos") && exeDir.GetFile() == "MacOS")
-		{
-			exeDir = exeDir.GetBaseDir().GetBaseDir().GetBaseDir();
-			GD.Print($"[Inkodot] macOS bundle detected, walked out to: '{exeDir}'");
-		}
-
-		// Sanity: the resolved dir must be an absolute path that actually exists,
-		// and must not be the filesystem root (which usually means we walked too
-		// far, or GetBaseDir() returned nothing useful).
-		var exeDirValid =
-			!exeDir.IsNullOrEmpty() &&
-			exeDir != "/" &&
-			exeDir.IsAbsolutePath() &&
-			DirAccess.DirExistsAbsolute(exeDir);
-
-		if (!exeDirValid)
-		{
-			GD.PushWarning(
-				$"[Inkodot] Executable directory is unusable (got '{exeDir}'). " +
-				"Falling back to user data directory.");
-
-			var fallback = OS.GetUserDataDir().PathJoin("ink");
-			DirAccess.MakeDirRecursiveAbsolute(fallback);
-			return fallback;
-		}
-
-		var root = exeDir.PathJoin("ink");
-
-#if DEBUG
-		GD.Print($"[Inkodot] Using root folder: '{root}'");
-#endif
-
-		if (!DirAccess.DirExistsAbsolute(root))
-		{
-			var err = DirAccess.MakeDirRecursiveAbsolute(root);
-			if (err != Error.Ok)
-			{
-				GD.PushWarning(
-					$"[Inkodot] Could not create {root} (error {err}). " +
-					"Falling back to user data directory.");
-
-				var fallback = OS.GetUserDataDir().PathJoin("ink");
-				DirAccess.MakeDirRecursiveAbsolute(fallback);
-				return fallback;
-			}
-		}
-
-		return root;
-	}
-
-	/// <summary>
-	/// Returns the last-saved workspace folder if it exists on disk, otherwise "".
-	/// A saved path that has been moved or deleted is treated as absent, so the
-	/// caller falls back to the default.
-	/// </summary>
-	static string LoadLastFolder()
-	{
-		var cfg = new ConfigFile();
-		if (cfg.Load(ConfigPath) != Error.Ok) return "";
-
-		var value = cfg.GetValue(SessionSection, LastFolderKey, "");
-		var path = value.AsString();
-
-		if (path.IsNullOrEmpty()) return "";
-		if (!DirAccess.DirExistsAbsolute(path)) return "";
-
-		return path;
-	}
-
-	/// <summary>
-	/// Persists the current MainFolder as the last-opened folder. Called by the
-	/// UI whenever the user explicitly picks a folder — never on automatic
-	/// defaults, so a moved executable still derives a fresh &lt;exe&gt;/ink/ path.
-	/// </summary>
-	public void SaveLastFolder()
-	{
-		if (MainFolder.IsNullOrEmpty()) return;
-
-		var cfg = new ConfigFile();
-		cfg.Load(ConfigPath);   // preserves any other sections we add later
-		cfg.SetValue(SessionSection, LastFolderKey, MainFolder);
-
-		var err = cfg.Save(ConfigPath);
-		if (err != Error.Ok)
-			GD.PushWarning($"[Inkodot] Could not save session config: {err}");
 	}
 
 	public async Task Update(bool newFile = false)
@@ -219,21 +121,15 @@ public sealed partial class InkEditor : CodeEdit
 
 	/// <summary>
 	/// Detach the editor from the current file and clear all associated state.
-	/// Used when the file's containing folder is deleted, so FilePath doesn't
-	/// keep pointing at a path that no longer exists.
+	/// Used when a file or folder the editor is bound to gets deleted.
 	/// </summary>
 	public void ClearFile()
 	{
-		// Drop any cached edits — otherwise SaveSession would try to write them
-		// back to disk on the next run.
 		if (!FilePath.IsNullOrEmpty())
 			StoriesSaveCache.Remove(FilePath);
 
 		ClearLinesBG();
 
-		// Assign Text before nulling FilePath. Setting Text triggers TextChanged,
-		// which schedules Update(); Update() sees empty Text and bails early,
-		// leaving CurrentStory = null (see LoadInkText above).
 		Text = "";
 
 		FilePath = null;
@@ -297,7 +193,6 @@ public sealed partial class InkEditor : CodeEdit
 			CurrentStory = CompileStory(FilePath);
 			CurrentStory?.Initialize();
 		}
-
 		catch (Exception ex)
 		{
 			CurrentStory = null;
@@ -306,13 +201,214 @@ public sealed partial class InkEditor : CodeEdit
 	}
 
 
+	//> Workspace resolution
+
+	/// <summary>
+	/// Resolves the folder the standalone editor uses as its home.
+	///
+	/// Desktop: prefers &lt;exe_dir&gt;/ink/; falls back to
+	/// &lt;user_data_dir&gt;/ink/ if the exe dir is unusable.
+	///
+	/// Android/iOS: the app is sandboxed and the executable lives inside
+	/// the .apk / .ipa archive — there is no writable "next to the binary".
+	/// We use the app's private data directory.
+	/// </summary>
+	static string GetStandaloneRoot()
+	{
+		// --- Android / iOS ---------------------------------------------
+		if (IsMobile)
+		{
+			var mobileRoot = OS.GetUserDataDir().PathJoin("ink");
+			DirAccess.MakeDirRecursiveAbsolute(mobileRoot);
+			GD.Print($"[Inkodot] Mobile root: {mobileRoot}");
+			return mobileRoot;
+		}
+
+		// --- Desktop ---------------------------------------------------
+		var exePath = OS.GetExecutablePath();
+		GD.Print($"[Inkodot] Executable path: '{exePath}'");
+
+		var exeDir = exePath.GetBaseDir();
+
+		if (OS.HasFeature("macos") && exeDir.GetFile() == "MacOS")
+		{
+			exeDir = exeDir.GetBaseDir().GetBaseDir().GetBaseDir();
+			GD.Print($"[Inkodot] macOS bundle detected, walked out to: '{exeDir}'");
+		}
+
+		var exeDirValid =
+			!exeDir.IsNullOrEmpty() &&
+			exeDir != "/" &&
+			exeDir.IsAbsolutePath() &&
+			DirAccess.DirExistsAbsolute(exeDir);
+
+		if (!exeDirValid)
+		{
+			GD.PushWarning(
+				$"[Inkodot] Executable directory is unusable (got '{exeDir}'). " +
+				"Falling back to user data directory.");
+
+			var fallback = OS.GetUserDataDir().PathJoin("ink");
+			DirAccess.MakeDirRecursiveAbsolute(fallback);
+			return fallback;
+		}
+
+		var root = exeDir.PathJoin("ink");
+		GD.Print($"[Inkodot] Using root folder: '{root}'");
+
+		if (!DirAccess.DirExistsAbsolute(root))
+		{
+			var err = DirAccess.MakeDirRecursiveAbsolute(root);
+			if (err != Error.Ok)
+			{
+				GD.PushWarning(
+					$"[Inkodot] Could not create {root} (error {err}). " +
+					"Falling back to user data directory.");
+
+				var fallback = OS.GetUserDataDir().PathJoin("ink");
+				DirAccess.MakeDirRecursiveAbsolute(fallback);
+				return fallback;
+			}
+		}
+
+		return root;
+	}
+
+
+	//> Demo extraction
+
+	/// <summary>
+	/// If the workspace contains no .ink files, copies the demos bundled at
+	/// res://ink_demos/ into the workspace. Never overwrites existing files.
+	///
+	/// On desktop this duplicates the export plugin's "ink/" folder work, but
+	/// the two don't conflict — the plugin writes next to the executable at
+	/// export time, this writes into the resolved workspace at first launch,
+	/// and both skip when files already exist.
+	///
+	/// On mobile this is the *only* way demos reach the user, since there is
+	/// no writable location next to the APK.
+	/// </summary>
+	void EnsureDemoFiles()
+	{
+		if (MainFolder.IsNullOrEmpty()) return;
+		if (!DirAccess.DirExistsAbsolute(MainFolder)) return;
+
+		if (HasAnyInkFiles(MainFolder))
+		{
+			GD.Print("[Inkodot] Workspace already has .ink files, skipping demo extraction.");
+			return;
+		}
+
+		var demoSource = "res://ink_demos";
+		if (!DirAccess.DirExistsAbsolute(demoSource))
+		{
+			GD.Print("[Inkodot] No demos bundled, skipping extraction.");
+			return;
+		}
+
+		GD.Print($"[Inkodot] Extracting demos to '{MainFolder}'...");
+		CopyDirectoryRecursive(demoSource, MainFolder);
+	}
+
+	bool HasAnyInkFiles(string path)
+	{
+		var dir = DirAccess.Open(path);
+		if (dir == null) return false;
+
+		foreach (var f in dir.GetFiles())
+		{
+			if (f.EndsWith(".ink", StringComparison.OrdinalIgnoreCase))
+				return true;
+		}
+
+		foreach (var sub in dir.GetDirectories())
+		{
+			if (HasAnyInkFiles(path.PathJoin(sub)))
+				return true;
+		}
+
+		return false;
+	}
+
+	void CopyDirectoryRecursive(string srcRes, string dstAbs)
+	{
+		DirAccess.MakeDirRecursiveAbsolute(dstAbs);
+
+		var dir = DirAccess.Open(srcRes);
+		if (dir == null) return;
+
+		foreach (var file in dir.GetFiles())
+		{
+			// Skip editor metadata companions.
+			if (file.EndsWith(".import", StringComparison.OrdinalIgnoreCase))
+				continue;
+
+			var srcPath = srcRes.PathJoin(file);
+			var dstPath = dstAbs.PathJoin(file);
+
+			using var src = Godot.FileAccess.Open(srcPath, Godot.FileAccess.ModeFlags.Read);
+			if (src == null) continue;
+
+			var bytes = src.GetBuffer((long)src.GetLength());
+
+			using var dst = Godot.FileAccess.Open(dstPath, Godot.FileAccess.ModeFlags.Write);
+			if (dst == null) continue;
+
+			dst.StoreBuffer(bytes);
+		}
+
+		foreach (var sub in dir.GetDirectories())
+		{
+			CopyDirectoryRecursive(srcRes.PathJoin(sub), dstAbs.PathJoin(sub));
+		}
+	}
+
+
+	//> Session persistence
+
+	const string ConfigPath     = "user://inkodot.cfg";
+	const string SessionSection = "session";
+	const string LastFolderKey  = "last_folder";
+
+	static string LoadLastFolder()
+	{
+		// The last-folder concept doesn't apply on mobile — there is only
+		// one workspace. Save the lookup entirely.
+		if (IsMobile) return "";
+
+		var cfg = new ConfigFile();
+		if (cfg.Load(ConfigPath) != Error.Ok) return "";
+
+		var value = cfg.GetValue(SessionSection, LastFolderKey, "");
+		var path = value.AsString();
+
+		if (path.IsNullOrEmpty()) return "";
+		if (!DirAccess.DirExistsAbsolute(path)) return "";
+
+		return path;
+	}
+
+	public void SaveLastFolder()
+	{
+		if (IsMobile) return;
+		if (MainFolder.IsNullOrEmpty()) return;
+
+		var cfg = new ConfigFile();
+		cfg.Load(ConfigPath);
+		cfg.SetValue(SessionSection, LastFolderKey, MainFolder);
+
+		var err = cfg.Save(ConfigPath);
+		if (err != Error.Ok)
+			GD.PushWarning($"[Inkodot] Could not save session config: {err}");
+	}
+
 
 	//> Choice History
 
 	int[] GetChoiceHistory() => [.. ChoiceHistoryList];
 
 	void SetChoiceHistory(int[] newHistory) => ChoiceHistoryList = [.. newHistory];
-
 
 
 	//> File
@@ -335,7 +431,6 @@ public sealed partial class InkEditor : CodeEdit
 				{
 					Text = text;
 				}
-
 				else
 				{
 					var globalPath = ProjectSettings.GlobalizePath(FilePath);
@@ -343,7 +438,6 @@ public sealed partial class InkEditor : CodeEdit
 				}
 			}
 		}
-
 		catch (Exception ex)
 		{
 			GD.PushWarning($"{ex}");
@@ -351,7 +445,6 @@ public sealed partial class InkEditor : CodeEdit
 
 		Update(true).Forget();
 	}
-
 
 
 	//> Save - File
@@ -396,7 +489,6 @@ public sealed partial class InkEditor : CodeEdit
 			var story = CompileStory(path);
 			if (story is null) return;
 		}
-
 		catch (Exception ex)
 		{
 			GD.PushError($"{ex}");
@@ -408,7 +500,6 @@ public sealed partial class InkEditor : CodeEdit
 		{
 			text = Text;
 		}
-
 		else if (StoriesSaveCache.TryGetValue(path, out var storyText))
 		{
 			text = storyText;
@@ -441,7 +532,6 @@ public sealed partial class InkEditor : CodeEdit
 	}
 
 
-
 	//> Save - Session
 
 	public void DiscardSession()
@@ -462,7 +552,7 @@ public sealed partial class InkEditor : CodeEdit
 	{
 		if (!FilePath.IsNullOrEmpty())
 		{
-			StoriesSaveCache[FilePath] = Text;
+			StoriesSaveCache.Add(FilePath, Text);
 		}
 
 		foreach (var pair in StoriesSaveCache)
@@ -479,7 +569,6 @@ public sealed partial class InkEditor : CodeEdit
 					return;
 				}
 			}
-
 			catch (Exception ex)
 			{
 				GD.PushError($"{ex}");
@@ -495,7 +584,6 @@ public sealed partial class InkEditor : CodeEdit
 	}
 
 
-
 	//> Syntax
 
 	void ClearLinesBG()
@@ -508,7 +596,6 @@ public sealed partial class InkEditor : CodeEdit
 
 		ColoredLines.Clear();
 	}
-
 
 
 	//> Ink Compiler
@@ -589,6 +676,5 @@ public sealed partial class InkEditor : CodeEdit
 
 			return;
 		}
-
 	}
 }

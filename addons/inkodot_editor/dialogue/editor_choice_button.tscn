@@ -1,11 +1,12 @@
 [gd_scene format=3 uid="uid://bjhoa78r8qiiv"]
 
-[ext_resource type="PackedScene" uid="uid://comac77ke5g7o" path="res://user_interface/ink_dialogue/choice_button/DialogueChoiceButton.tscn" id="1_sdnh8"]
-[ext_resource type="FontFile" uid="uid://c1vg3v4r4oy71" path="res://assets/fonts/sans/inter/inter_24pt_regular.ttf" id="2_qqe1f"]
-[ext_resource type="FontFile" uid="uid://rocmgvn7mnld" path="res://assets/fonts/sans/inter/inter_24pt_semibold.ttf" id="3_ns6ug"]
-[ext_resource type="FontFile" uid="uid://d2b2ilwwwrt7p" path="res://assets/fonts/sans/inter/inter_24pt_semibolditalic.ttf" id="4_ns3hy"]
-[ext_resource type="FontFile" uid="uid://cnkv0aemqcy56" path="res://assets/fonts/sans/inter/inter_24pt_thinitalic.ttf" id="5_5s1ro"]
-[ext_resource type="FontFile" uid="uid://dncplol3my0ck" path="res://assets/fonts/mono/jetbrains_mono/jetbrainsmono_thin.ttf" id="6_y0okg"]
+[ext_resource type="PackedScene" uid="uid://comac77ke5g7o" path="res://addons/inkodot_editor/user_interface/ink_dialogue/choice_button/DialogueChoiceButton.tscn" id="1_sdnh8"]
+[ext_resource type="FontFile" uid="uid://c1vg3v4r4oy71" path="res://addons/inkodot_editor/assets/fonts/sans/inter/inter_24pt_regular.ttf" id="2_qqe1f"]
+[ext_resource type="FontFile" uid="uid://rocmgvn7mnld" path="res://addons/inkodot_editor/assets/fonts/sans/inter/inter_24pt_semibold.ttf" id="3_ns6ug"]
+[ext_resource type="FontFile" uid="uid://d2b2ilwwwrt7p" path="res://addons/inkodot_editor/assets/fonts/sans/inter/inter_24pt_semibolditalic.ttf" id="4_ns3hy"]
+[ext_resource type="FontFile" uid="uid://cnkv0aemqcy56" path="res://addons/inkodot_editor/assets/fonts/sans/inter/inter_24pt_thinitalic.ttf" id="5_5s1ro"]
+[ext_resource type="FontFile" uid="uid://dncplol3my0ck" path="res://addons/inkodot_editor/assets/fonts/mono/jetbrains_mono/jetbrainsmono_thin.ttf" id="6_y0okg"]
+
 
 [node name="EditorChoiceButton" unique_id=217440614 instance=ExtResource("1_sdnh8")]
 anchors_preset = -1
